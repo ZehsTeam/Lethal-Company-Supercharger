@@ -39,6 +39,11 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
     public bool TrySuperchargeNext()
     {
+        if (!Plugin.ConfigManager.EnableSuperchargerInOrbit && ShipHelper.IsInOrbit())
+        {
+            return false;
+        }
+
         SuperchargeNext = Utils.RandomPercent(Plugin.ConfigManager.SuperchargeChance);
 
         if (SuperchargeNext)
@@ -91,10 +96,18 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
         _chargeStationAnimator.SetTrigger("zap");
 
+        if (Plugin.ConfigManager.FlickerShipLights)
+        {
+            if (ShipHelper.FlickerLightsOnLocalClient(duration: 3f, minInterval: 0.15f, maxInterval: 0.4f))
+            {
+                ShipHelper.SetLightSwitchInteractable(false);
+            }
+        }
+
         if (isLocalPlayer && grabbableObject != null)
         {
-            grabbableObject.insertedBattery = new Battery(isEmpty: false, 2f);
-            grabbableObject.SyncBatteryServerRpc(200);
+            grabbableObject.insertedBattery = new Battery(isEmpty: false, Plugin.ConfigManager.ItemChargeAmount / 100f);
+            grabbableObject.SyncBatteryServerRpc(Plugin.ConfigManager.ItemChargeAmount);
         }
 
         _chargeStationParticleSystem.gameObject.SetActive(true);
@@ -113,7 +126,12 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
         if (isLocalPlayer && Utils.RandomPercent(Plugin.ConfigManager.ExplodeChance))
         {
-            PluginNetworkBehaviour.Instance.SpawnExplosionServerRpc(grabbableObject.transform.position, 50, 4.5f);
+            PluginNetworkBehaviour.Instance.SpawnExplosionServerRpc(grabbableObject.transform.position, damage: Plugin.ConfigManager.ExplodeDamage, 5f);
+
+            if (Plugin.ConfigManager.ExplosionTurnsOffShipLights)
+            {
+                PluginNetworkBehaviour.Instance.PowerSurgeShipServerRpc();
+            }
         }
 
         yield return new WaitForSeconds(0.85f);
@@ -121,14 +139,16 @@ public class SuperchargeStationBehaviour : MonoBehaviour
         _chargeStationParticleSystem.gameObject.SetActive(false);
         SetPlayerAnimatorHoldAnimation(playerScript, grabbableObject);
 
-        yield return new WaitForSeconds(1f);
-
+        yield return new WaitForSeconds(0.35f);
+        
         SetOriginalChargeStationValues();
         ResetPlayerAnimator(playerScript, grabbableObject);
 
+        ShipHelper.SetLightSwitchInteractable(true);
+
         Plugin.Instance.LogInfoExtended("Supercharge animation finished.");
     }
-
+    
     public void SetCustomChargeStationValues()
     {
         _interactTrigger.animationWaitTime = 3.75f;
@@ -177,15 +197,27 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
     private void SetPlayerAnimatorHoldAnimation(PlayerControllerB playerScript, GrabbableObject grabbableObject)
     {
-        playerScript.playerBodyAnimator.SetBool("Grab", true);
+        Animator animator = playerScript.playerBodyAnimator;
+
+        animator.SetBool("Grab", true);
+        animator.SetBool("GrabValidated", true);
 
         string grabAnimation = grabbableObject.itemProperties.grabAnim;
 
         if (!string.IsNullOrEmpty(grabAnimation))
         {
-            playerScript.playerBodyAnimator.SetBool(grabAnimation, true);
+            animator.SetBool(grabAnimation, true);
+        }
+        
+        if (grabbableObject.itemProperties.twoHandedAnimation)
+        {
+            animator.ResetTrigger("SwitchHoldAnimationTwoHanded");
+            animator.SetTrigger("SwitchHoldAnimationTwoHanded");
         }
 
-        playerScript.playerBodyAnimator.Play("chooseHoldAnimation");
+        animator.ResetTrigger("SwitchHoldAnimation");
+        animator.SetTrigger("SwitchHoldAnimation");
+
+        animator.Play("chooseHoldAnimation");
     }
 }

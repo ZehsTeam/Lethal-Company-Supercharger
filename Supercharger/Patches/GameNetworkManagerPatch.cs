@@ -7,7 +7,7 @@ namespace com.github.zehsteam.Supercharger.Patches;
 [HarmonyPatch(typeof(GameNetworkManager))]
 internal class GameNetworkManagerPatch
 {
-    [HarmonyPatch("Start")]
+    [HarmonyPatch(nameof(GameNetworkManager.Start))]
     [HarmonyPostfix]
     static void StartPatch()
     {

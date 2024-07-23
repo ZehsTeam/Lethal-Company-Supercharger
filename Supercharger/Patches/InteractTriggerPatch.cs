@@ -12,7 +12,7 @@ internal class InteractTriggerPatch
     {
         if (TryGetSuperchargeStationBehaviour(__instance, out SuperchargeStationBehaviour superchargeStationBehaviour))
         {
-            if (!Utils.IsHangarShipSuperchargeStationBehaviour(superchargeStationBehaviour)) return;
+            if (!ShipHelper.IsShipSupercharger(superchargeStationBehaviour)) return;
 
             superchargeStationBehaviour.TrySuperchargeNext();
         }

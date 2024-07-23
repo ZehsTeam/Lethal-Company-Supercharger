@@ -1,10 +1,14 @@
 ﻿using GameNetcodeStuff;
-using UnityEngine;
 
 namespace com.github.zehsteam.Supercharger;
 
 internal class PlayerUtils
 {
+    public static bool IsLocalPlayer(int playerId)
+    {
+        return IsLocalPlayer(GetPlayerScript(playerId));
+    }
+
     public static bool IsLocalPlayer(PlayerControllerB playerScript)
     {
         return playerScript == GetLocalPlayerScript();

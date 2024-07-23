@@ -16,9 +16,8 @@ public class PlayerAnimatorStateHelper
     public PlayerAnimatorStateHelper(Animator animator)
     {
         this.animator = animator;
-        this.originalAnimatorController = animator.runtimeAnimatorController;
+        originalAnimatorController = animator.runtimeAnimatorController;
     }
-
 
     //We need to Save the important states due to how unity handles switching animator overrides (So stupid)
     public void SaveAnimatorStates()

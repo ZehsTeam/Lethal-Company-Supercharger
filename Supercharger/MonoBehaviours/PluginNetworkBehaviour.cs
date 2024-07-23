@@ -35,21 +35,33 @@ public class PluginNetworkBehaviour : NetworkBehaviour
         PlayerControllerB playerScript = PlayerUtils.GetPlayerScript(fromPlayerId);
         if (PlayerUtils.IsLocalPlayer(playerScript)) return;
 
-        if (Utils.TryGetHangarShipSuperchargeStationBehaviour(out SuperchargeStationBehaviour superchargeStationBehaviour))
+        if (ShipHelper.TryGetSuperchargeStationBehaviour(out SuperchargeStationBehaviour superchargeStationBehaviour))
         {
             superchargeStationBehaviour.SuperchargeItemForOtherClient(playerScript);
         }
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void SpawnExplosionServerRpc(Vector3 position, int damage, float maxDamageRange)
+    public void SpawnExplosionServerRpc(Vector3 position, int damage, float range)
     {
-        SpawnExplosionClientRpc(position, damage, maxDamageRange);
+        SpawnExplosionClientRpc(position, damage, range);
     }
 
     [ClientRpc]
-    public void SpawnExplosionClientRpc(Vector3 position, int damage, float maxDamageRange)
+    public void SpawnExplosionClientRpc(Vector3 position, int damage, float range)
     {
-        Utils.CreateExplosion(position, true, damage, maxDamageRange: maxDamageRange);
+        Landmine.SpawnExplosion(position, spawnExplosionEffect: true, killRange: 0f, damageRange: range, nonLethalDamage: damage);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void PowerSurgeShipServerRpc()
+    {
+        PowerSurgeShipClientRpc();
+    }
+
+    [ClientRpc]
+    public void PowerSurgeShipClientRpc()
+    {
+        StartOfRound.Instance.PowerSurgeShip();
     }
 }

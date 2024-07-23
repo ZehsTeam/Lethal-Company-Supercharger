@@ -22,7 +22,7 @@ internal class ItemChargerPatch
         SuperchargeStationBehaviour superchargeStationBehaviour = __instance.transform.parent.parent.GetComponentInChildren<SuperchargeStationBehaviour>();
         if (superchargeStationBehaviour == null) return true;
 
-        if (!Utils.IsHangarShipSuperchargeStationBehaviour(superchargeStationBehaviour)) return true;
+        if (!ShipHelper.IsShipSupercharger(superchargeStationBehaviour)) return true;
 
         if (!superchargeStationBehaviour.SuperchargeNext)
         {
@@ -44,5 +44,19 @@ internal class ItemChargerPatch
         superchargeStationBehaviour.SuperchargeItem(currentlyHeldObjectServer, playerScript);
 
         return false;
+    }
+
+    [HarmonyPatch("chargeItemDelayed")]
+    [HarmonyPrefix]
+    static void chargeItemDelayedPatch(ref GrabbableObject itemToCharge)
+    {
+        if (itemToCharge == null) return;
+        if (itemToCharge.insertedBattery == null) return;
+        if (itemToCharge.insertedBattery.empty) return;
+
+        if (itemToCharge.insertedBattery.charge > 1f)
+        {
+            itemToCharge = null;
+        }
     }
 }

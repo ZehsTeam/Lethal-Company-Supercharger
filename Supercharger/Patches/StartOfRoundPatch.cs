@@ -8,7 +8,7 @@ namespace com.github.zehsteam.Supercharger.Patches;
 [HarmonyPatch(typeof(StartOfRound))]
 internal class StartOfRoundPatch
 {
-    [HarmonyPatch("Awake")]
+    [HarmonyPatch(nameof(StartOfRound.Awake))]
     [HarmonyPostfix]
     static void AwakePatch()
     {
@@ -23,7 +23,7 @@ internal class StartOfRoundPatch
         networkHandlerHost.GetComponent<NetworkObject>().Spawn();
     }
 
-    [HarmonyPatch("OnClientConnect")]
+    [HarmonyPatch(nameof(StartOfRound.OnClientConnect))]
     [HarmonyPrefix]
     static void OnClientConnectPatch(ref ulong clientId)
     {
@@ -47,10 +47,17 @@ internal class StartOfRoundPatch
         PluginNetworkBehaviour.Instance.SendConfigToPlayerClientRpc(new SyncedConfigData(Plugin.ConfigManager), clientRpcParams);
     }
 
-    [HarmonyPatch("OnLocalDisconnect")]
+    [HarmonyPatch(nameof(StartOfRound.OnLocalDisconnect))]
     [HarmonyPrefix]
     static void OnLocalDisconnectPatch()
     {
         Plugin.Instance.OnLocalDisconnect();
+    }
+
+    [HarmonyPatch(nameof(StartOfRound.PowerSurgeShip))]
+    [HarmonyPostfix]
+    static void PowerSurgeShipPatch()
+    {
+        ShipHelper.PowerSurgedShip = true;
     }
 }

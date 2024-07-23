@@ -15,8 +15,13 @@ Download [Supercharger](https://thunderstore.io/c/lethal-company/p/Zehs/Supercha
 | General Settings | Setting type | Default value | Description |
 | ----------- | ----------- | ----------- | ----------- |
 | `ExtendedLogging` | `Boolean` | `false` | Enable extended logging. |
-| `SuperchargeChance` | `Single` | `50` | The percent chance a charge station will supercharge your item. |
-| `ExplodeChance` | `Single` | `50` | The percent chance your item will explode from supercharging. |
+| `EnableSuperchargerInOrbit` | `Boolean` | `false` | If enabled, the ship's charging station will be able to supercharge while in orbit. |
+| `SuperchargeChance` | `Single` | `45` | The percent chance the ship's charging station will supercharge your item. |
+| `ItemChargeAmount` | `Int32` | `200` | The amount of charge an item will receive after being supercharged. |
+| `FlickerShipLights` | `Boolean` | `true` | If enabled, the ship's lights will flicker during a supercharge. |
+| `ExplodeChance` | `Single` | `25` | The percent chance your item will explode from supercharging. |
+| `ExplodeDamage` | `Int32` | `40` | The amount of damage you will receive from an explosion. |
+| `ExplosionTurnsOffShipLights` | `Boolean` | `true` | If enabled, the ship's lights will turn off after an explosion. |
 
 </details>
 
