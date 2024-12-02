@@ -1,39 +1,68 @@
-﻿using GameNetcodeStuff;
+﻿using com.github.zehsteam.Supercharger.Data;
+using com.github.zehsteam.Supercharger.Helpers;
+using GameNetcodeStuff;
 using Unity.Netcode;
 using UnityEngine;
 
 namespace com.github.zehsteam.Supercharger.MonoBehaviours;
 
-public class PluginNetworkBehaviour : NetworkBehaviour
+internal class PluginNetworkBehaviour : NetworkBehaviour
 {
-    public static PluginNetworkBehaviour Instance;
+    public static PluginNetworkBehaviour Instance { get; private set; }
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
+        // Ensure there is only one instance of the Singleton
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject); // Destroy duplicate object
+            return;
+        }
+
+        Instance = this;
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        if (Instance != null && Instance != this)
+        {
+            // Ensure only the server can handle despawning duplicate instances
+            if (IsServer)
+            {
+                NetworkObject.Despawn(); // Despawn the networked object
+            }
+
+            return;
+        }
+
+        Instance = this;
     }
 
     [ClientRpc]
-    public void SendConfigToPlayerClientRpc(SyncedConfigData syncedConfigData, ClientRpcParams clientRpcParams = default)
+    public void SetSyncedConfigValueClientRpc(string section, string key, string value, ClientRpcParams clientRpcParams = default)
     {
-        if (Plugin.IsHostOrServer) return;
+        if (NetworkUtils.IsServer) return;
 
-        Plugin.logger.LogInfo("Syncing config with host.");
-
-        Plugin.ConfigManager.SetHostConfigData(syncedConfigData);
+        SyncedConfigEntryBase.SetValueFromServer(section, key, value);
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void SuperchargeItemServerRpc(int fromPlayerId)
+    public void SuperchargeItemServerRpc(ServerRpcParams serverRpcParams = default)
     {
-        SuperchargeItemClientRpc(fromPlayerId);
+        var senderClientId = serverRpcParams.Receive.SenderClientId;
+        if (!NetworkManager.ConnectedClients.ContainsKey(senderClientId)) return;
+
+        SuperchargeItemClientRpc(senderClientId);
     }
 
     [ClientRpc]
-    public void SuperchargeItemClientRpc(int fromPlayerId)
+    public void SuperchargeItemClientRpc(ulong senderClientId)
     {
-        PlayerControllerB playerScript = PlayerUtils.GetPlayerScript(fromPlayerId);
-        if (PlayerUtils.IsLocalPlayer(playerScript)) return;
+        if (NetworkUtils.IsLocalClientId(senderClientId)) return;
+
+        PlayerControllerB playerScript = PlayerUtils.GetPlayerScriptByClientId(senderClientId);
 
         if (ShipHelper.TryGetSuperchargeStationBehaviour(out SuperchargeStationBehaviour superchargeStationBehaviour))
         {
@@ -42,15 +71,17 @@ public class PluginNetworkBehaviour : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void SpawnExplosionServerRpc(Vector3 position, int damage, float range)
+    public void SpawnExplosionServerRpc(Vector3 position, int damage, int enemyDamage, float range, ulong senderClientId)
     {
-        SpawnExplosionClientRpc(position, damage, range);
+        SpawnExplosionClientRpc(position, damage, enemyDamage, range, senderClientId);
     }
-
+    
     [ClientRpc]
-    public void SpawnExplosionClientRpc(Vector3 position, int damage, float range)
+    public void SpawnExplosionClientRpc(Vector3 position, int damage, int enemyDamage, float range, ulong senderClientId)
     {
-        Landmine.SpawnExplosion(position, spawnExplosionEffect: true, killRange: 0f, damageRange: range, nonLethalDamage: damage);
+        PlayerControllerB playerScript = PlayerUtils.GetPlayerScriptByClientId(senderClientId);
+
+        Utils.CreateExplosion(position, spawnExplosionEffect: true, damage: damage, maxDamageRange: range, enemyHitForce: enemyDamage, attacker: playerScript);
     }
 
     [ServerRpc(RequireOwnership = false)]

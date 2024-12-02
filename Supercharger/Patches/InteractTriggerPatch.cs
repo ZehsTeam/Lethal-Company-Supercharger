@@ -1,14 +1,15 @@
-﻿using com.github.zehsteam.Supercharger.MonoBehaviours;
+﻿using com.github.zehsteam.Supercharger.Helpers;
+using com.github.zehsteam.Supercharger.MonoBehaviours;
 using HarmonyLib;
 
 namespace com.github.zehsteam.Supercharger.Patches;
 
 [HarmonyPatch(typeof(InteractTrigger))]
-internal class InteractTriggerPatch
+internal static class InteractTriggerPatch
 {
-    [HarmonyPatch("specialInteractAnimation")]
+    [HarmonyPatch(nameof(InteractTrigger.specialInteractAnimation))]
     [HarmonyPostfix]
-    static void specialInteractAnimationPatch(InteractTrigger __instance)
+    private static void specialInteractAnimationPatch(InteractTrigger __instance)
     {
         if (TryGetSuperchargeStationBehaviour(__instance, out SuperchargeStationBehaviour superchargeStationBehaviour))
         {

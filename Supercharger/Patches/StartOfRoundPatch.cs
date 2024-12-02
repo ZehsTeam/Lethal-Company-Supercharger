@@ -1,4 +1,5 @@
-﻿using com.github.zehsteam.Supercharger.MonoBehaviours;
+﻿using com.github.zehsteam.Supercharger.Data;
+using com.github.zehsteam.Supercharger.Helpers;
 using HarmonyLib;
 using Unity.Netcode;
 using UnityEngine;
@@ -6,18 +7,18 @@ using UnityEngine;
 namespace com.github.zehsteam.Supercharger.Patches;
 
 [HarmonyPatch(typeof(StartOfRound))]
-internal class StartOfRoundPatch
+internal static class StartOfRoundPatch
 {
     [HarmonyPatch(nameof(StartOfRound.Awake))]
     [HarmonyPostfix]
-    static void AwakePatch()
+    private static void AwakePatch()
     {
         SpawnNetworkHandler();
     }
 
     private static void SpawnNetworkHandler()
     {
-        if (!Plugin.IsHostOrServer) return;
+        if (!NetworkUtils.IsServer) return;
 
         var networkHandlerHost = Object.Instantiate(Content.NetworkHandlerPrefab, Vector3.zero, Quaternion.identity);
         networkHandlerHost.GetComponent<NetworkObject>().Spawn();
@@ -25,38 +26,21 @@ internal class StartOfRoundPatch
 
     [HarmonyPatch(nameof(StartOfRound.OnClientConnect))]
     [HarmonyPrefix]
-    static void OnClientConnectPatch(ref ulong clientId)
+    private static void OnClientConnectPatch(ref ulong clientId)
     {
         SendConfigToNewConnectedPlayer(clientId);
     }
 
     private static void SendConfigToNewConnectedPlayer(ulong clientId)
     {
-        if (!Plugin.IsHostOrServer) return;
+        if (!NetworkUtils.IsServer) return;
 
-        ClientRpcParams clientRpcParams = new ClientRpcParams
-        {
-            Send = new ClientRpcSendParams
-            {
-                TargetClientIds = [clientId]
-            }
-        };
-
-        Plugin.logger.LogInfo($"Sending config to client: {clientId}");
-
-        PluginNetworkBehaviour.Instance.SendConfigToPlayerClientRpc(new SyncedConfigData(Plugin.ConfigManager), clientRpcParams);
-    }
-
-    [HarmonyPatch(nameof(StartOfRound.OnLocalDisconnect))]
-    [HarmonyPrefix]
-    static void OnLocalDisconnectPatch()
-    {
-        Plugin.Instance.OnLocalDisconnect();
+        SyncedConfigEntryBase.SendConfigsToClient(clientId);
     }
 
     [HarmonyPatch(nameof(StartOfRound.PowerSurgeShip))]
     [HarmonyPostfix]
-    static void PowerSurgeShipPatch()
+    private static void PowerSurgeShipPatch()
     {
         ShipHelper.PowerSurgedShip = true;
     }

@@ -1,4 +1,5 @@
-﻿using com.github.zehsteam.Supercharger.MonoBehaviours;
+﻿using com.github.zehsteam.Supercharger.Helpers;
+using com.github.zehsteam.Supercharger.MonoBehaviours;
 using GameNetcodeStuff;
 using HarmonyLib;
 using UnityEngine;
@@ -6,23 +7,39 @@ using UnityEngine;
 namespace com.github.zehsteam.Supercharger.Patches;
 
 [HarmonyPatch(typeof(ItemCharger))]
-internal class ItemChargerPatch
+internal static class ItemChargerPatch
 {
-    [HarmonyPatch("__initializeVariables")]
+    [HarmonyPatch(nameof(ItemCharger.__initializeVariables))]
     [HarmonyPostfix]
-    static void __initializeVariablesPatch(ItemCharger __instance)
+    private static void __initializeVariablesPatch(ItemCharger __instance)
     {
         Object.Instantiate(Content.SuperchargeStationPrefab, Vector3.zero, Quaternion.identity, __instance.chargeStationAnimator.transform);
     }
 
     [HarmonyPatch(nameof(ItemCharger.ChargeItem))]
     [HarmonyPrefix]
-    static bool ChargeItemPatch(ref ItemCharger __instance, ref Coroutine ___chargeItemCoroutine)
+    private static bool ChargeItemPatch(ref ItemCharger __instance, ref Coroutine ___chargeItemCoroutine)
     {
-        SuperchargeStationBehaviour superchargeStationBehaviour = __instance.transform.parent.parent.GetComponentInChildren<SuperchargeStationBehaviour>();
-        if (superchargeStationBehaviour == null) return true;
+        SuperchargeStationBehaviour superchargeStationBehaviour = null;
 
-        if (!ShipHelper.IsShipSupercharger(superchargeStationBehaviour)) return true;
+        try
+        {
+            superchargeStationBehaviour = __instance.transform.parent.parent.GetComponentInChildren<SuperchargeStationBehaviour>();
+        }
+        catch
+        {
+
+        }
+
+        if (superchargeStationBehaviour == null)
+        {
+            return true;
+        }
+
+        if (!ShipHelper.IsShipSupercharger(superchargeStationBehaviour))
+        {
+            return true;
+        }
 
         if (!superchargeStationBehaviour.SuperchargeNext)
         {
@@ -31,10 +48,15 @@ internal class ItemChargerPatch
         }
 
         PlayerControllerB playerScript = PlayerUtils.GetLocalPlayerScript();
+        if (playerScript == null) return true;
 
         GrabbableObject currentlyHeldObjectServer = playerScript.currentlyHeldObjectServer;
         if (currentlyHeldObjectServer == null) return true;
-        if (!currentlyHeldObjectServer.itemProperties.requiresBattery) return true;
+
+        if (!currentlyHeldObjectServer.itemProperties.requiresBattery)
+        {
+            return true;
+        }
 
         if (___chargeItemCoroutine != null)
         {
@@ -46,9 +68,9 @@ internal class ItemChargerPatch
         return false;
     }
 
-    [HarmonyPatch("chargeItemDelayed")]
+    [HarmonyPatch(nameof(ItemCharger.chargeItemDelayed))]
     [HarmonyPrefix]
-    static void chargeItemDelayedPatch(ref GrabbableObject itemToCharge)
+    private static void chargeItemDelayedPatch(ref GrabbableObject itemToCharge)
     {
         if (itemToCharge == null) return;
         if (itemToCharge.insertedBattery == null) return;

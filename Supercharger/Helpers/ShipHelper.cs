@@ -2,7 +2,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace com.github.zehsteam.Supercharger;
+namespace com.github.zehsteam.Supercharger.Helpers;
 
 internal class ShipHelper
 {
@@ -12,9 +12,12 @@ internal class ShipHelper
 
     public static bool IsInOrbit()
     {
-        if (StartOfRound.Instance.inShipPhase) return true;
+        if (StartOfRound.Instance == null)
+        {
+            return false;
+        }
 
-        return false;
+        return StartOfRound.Instance.inShipPhase;
     }
 
     public static bool IsShipSupercharger(SuperchargeStationBehaviour superchargeStationBehaviour)

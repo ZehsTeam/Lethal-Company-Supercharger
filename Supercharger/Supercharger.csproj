@@ -7,7 +7,7 @@
     
     <AssemblyName>com.github.zehsteam.$(MSBuildProjectName)</AssemblyName> <!-- PLUGIN_GUID -->
     <Product>$(MSBuildProjectName)</Product>                               <!-- PLUGIN_NAME -->
-    <Version>1.1.0</Version>                                               <!-- PLUGIN_VERSION -->
+    <Version>1.2.0</Version>                                               <!-- PLUGIN_VERSION -->
     <Description></Description>
     
     <RootNamespace>com.github.zehsteam.$(MSBuildProjectName)</RootNamespace>
@@ -42,11 +42,21 @@
     <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="UnityEngine.Modules" Version="2023.2.4" IncludeAssets="compile" />
-    <PackageReference Include="LethalCompany.GameLibs.Steam" Version="56.0.0-beta.1-ngd.0" PrivateAssets="all" />
+    <PackageReference Include="LethalCompany.GameLibs.Steam" Version="67.0.0-ngd.0" PrivateAssets="all" />
   </ItemGroup>
 
   <PropertyGroup>
+    <!-- Local libraries folder -->
+    <LibraryFolder>D:\Documents\Lethal Company Modding\Mods</LibraryFolder>
+
+    <!-- Lethal Company plugins folder -->
     <PluginsFolder>D:\SteamLibrary\steamapps\common\Lethal Company\BepInEx\plugins</PluginsFolder>
+
+    <!-- Gale profile name -->
+    <GaleProfile>Mod Development</GaleProfile>
+    <GalePluginsFolder>$(AppData)\com.kesomannen.gale\lethal-company\profiles\$(GaleProfile)\BepInEx\plugins\Zehs-$(MSBuildProjectName)</GalePluginsFolder>
+
+    <!-- Other settings -->
     <PlatformTarget>AnyCPU</PlatformTarget>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
 	</PropertyGroup>
@@ -60,6 +70,10 @@
     <DebugType>embedded</DebugType>
   </PropertyGroup>
   
+  <ItemGroup>
+    <Reference Include="LethalConfig"><HintPath>$(LibraryFolder)\AinaVT-LethalConfig\LethalConfig.dll</HintPath></Reference>
+  </ItemGroup>
+  
   <Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
     <Exec Command="netcode-patch &quot;$(TargetPath)&quot; @(ReferencePathWithRefAssemblies->'&quot;%(Identity)&quot;', ' ')" />
   </Target>
@@ -67,5 +81,10 @@
   <Target Name="CopyToPluginsFolder" AfterTargets="PostBuildEvent" DependsOnTargets="NetcodePatch">
     <Copy DestinationFolder="$(PluginsFolder)" OverwriteReadOnlyFiles="true" SkipUnchangedFiles="true" SourceFiles="$(TargetPath)" />
     <Copy DestinationFolder="$(PluginsFolder)" OverwriteReadOnlyFiles="true" SkipUnchangedFiles="true" SourceFiles="$(TargetDir)\supercharger_assets" />
+  </Target>
+  
+  <Target Name="CopyToGalePluginsFolder" AfterTargets="CopyToPluginsFolder">
+    <Copy DestinationFolder="$(GalePluginsFolder)" OverwriteReadOnlyFiles="true" SkipUnchangedFiles="true" SourceFiles="$(TargetPath)" />
+    <Copy DestinationFolder="$(GalePluginsFolder)" OverwriteReadOnlyFiles="true" SkipUnchangedFiles="true" SourceFiles="$(TargetDir)\supercharger_assets" />
   </Target>
 </Project>

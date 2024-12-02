@@ -1,4 +1,5 @@
-﻿using GameNetcodeStuff;
+﻿using com.github.zehsteam.Supercharger.Helpers;
+using GameNetcodeStuff;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,11 +10,11 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 {
     [Header("SuperchargeStation")]
     [Space(5f)]
-    public AudioClip ChargeItemSFX = null;
-    public RuntimeAnimatorController ChargeStationAnimatorController = null;
+    public AudioClip ChargeItemSFX;
+    public RuntimeAnimatorController ChargeStationAnimatorController;
 
     [Header("Player")]
-    public AnimatorOverrideController PlayerAnimatorOverrideController = null;
+    public AnimatorOverrideController PlayerAnimatorOverrideController;
 
     public bool SuperchargeNext { get; private set; }
 
@@ -29,6 +30,12 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
     private void Start()
     {
+        if (transform.parent == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         _interactTrigger = transform.parent.GetComponentInChildren<InteractTrigger>();
         _chargeStationAudio = transform.parent.GetComponentInChildren<AudioSource>();
         _chargeStationAnimator = transform.parent.GetComponent<Animator>();
@@ -39,12 +46,9 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
     public bool TrySuperchargeNext()
     {
-        if (!Plugin.ConfigManager.EnableSuperchargerInOrbit && ShipHelper.IsInOrbit())
-        {
-            return false;
-        }
+        if (!AllowedToSupercharge()) return false;
 
-        SuperchargeNext = Utils.RandomPercent(Plugin.ConfigManager.SuperchargeChance);
+        SuperchargeNext = Utils.RandomPercent(Plugin.ConfigManager.Supercharger_Chance.Value);
 
         if (SuperchargeNext)
         {
@@ -54,9 +58,39 @@ public class SuperchargeStationBehaviour : MonoBehaviour
         return SuperchargeNext;
     }
 
+    public bool AllowedToSupercharge()
+    {
+        PlayerControllerB playerScript = PlayerUtils.GetLocalPlayerScript();
+        if (playerScript == null) return false;
+
+        if (playerScript.currentlyHeldObjectServer == null)
+        {
+            return false;
+        }
+
+        if (playerScript.currentlyHeldObjectServer.insertedBattery == null)
+        {
+            return false;
+        }
+
+        float charge = playerScript.currentlyHeldObjectServer.insertedBattery.charge;
+
+        if (Plugin.ConfigManager.Supercharger_OnlyWhenFullyCharged.Value && charge < 1f)
+        {
+            return false;
+        }
+
+        if (!Plugin.ConfigManager.Supercharger_EnableInOrbit.Value && ShipHelper.IsInOrbit())
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     public void SuperchargeItem(GrabbableObject grabbableObject, PlayerControllerB playerScript)
     {
-        PluginNetworkBehaviour.Instance.SuperchargeItemServerRpc(PlayerUtils.GetLocalPlayerId());
+        PluginNetworkBehaviour.Instance.SuperchargeItemServerRpc();
 
         if (_superchargeItemAnimation != null)
         {
@@ -96,7 +130,7 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
         _chargeStationAnimator.SetTrigger("zap");
 
-        if (Plugin.ConfigManager.FlickerShipLights)
+        if (Plugin.ConfigManager.Supercharger_FlickerShipLights.Value)
         {
             if (ShipHelper.FlickerLightsOnLocalClient(duration: 3f, minInterval: 0.15f, maxInterval: 0.4f))
             {
@@ -106,8 +140,8 @@ public class SuperchargeStationBehaviour : MonoBehaviour
 
         if (isLocalPlayer && grabbableObject != null)
         {
-            grabbableObject.insertedBattery = new Battery(isEmpty: false, Plugin.ConfigManager.ItemChargeAmount / 100f);
-            grabbableObject.SyncBatteryServerRpc(Plugin.ConfigManager.ItemChargeAmount);
+            grabbableObject.insertedBattery = new Battery(isEmpty: false, Plugin.ConfigManager.Supercharger_ItemChargeAmount.Value / 100f);
+            grabbableObject.SyncBatteryServerRpc(Plugin.ConfigManager.Supercharger_ItemChargeAmount.Value);
         }
 
         _chargeStationParticleSystem.gameObject.SetActive(true);
@@ -124,11 +158,16 @@ public class SuperchargeStationBehaviour : MonoBehaviour
             _chargeStationParticleSystem.Play();
         }
 
-        if (isLocalPlayer && Utils.RandomPercent(Plugin.ConfigManager.ExplodeChance))
+        if (isLocalPlayer && Utils.RandomPercent(Plugin.ConfigManager.Explosion_Chance.Value))
         {
-            PluginNetworkBehaviour.Instance.SpawnExplosionServerRpc(grabbableObject.transform.position, damage: Plugin.ConfigManager.ExplodeDamage, 5f);
+            Vector3 position = grabbableObject.transform.position;
+            int damage = Plugin.ConfigManager.Explosion_Damage.Value;
+            int enemyDamage = Plugin.ConfigManager.Explosion_EnemyDamage.Value;
+            float range = Plugin.ConfigManager.Explosion_Range.Value;
 
-            if (Plugin.ConfigManager.ExplosionTurnsOffShipLights)
+            PluginNetworkBehaviour.Instance.SpawnExplosionServerRpc(position, damage, enemyDamage, range, senderClientId: NetworkUtils.GetLocalClientId());
+
+            if (Plugin.ConfigManager.Explosion_TurnsOffShipLights.Value)
             {
                 PluginNetworkBehaviour.Instance.PowerSurgeShipServerRpc();
             }

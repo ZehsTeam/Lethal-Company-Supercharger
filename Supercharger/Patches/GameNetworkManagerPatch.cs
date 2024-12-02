@@ -5,11 +5,11 @@ using UnityEngine;
 namespace com.github.zehsteam.Supercharger.Patches;
 
 [HarmonyPatch(typeof(GameNetworkManager))]
-internal class GameNetworkManagerPatch
+internal static class GameNetworkManagerPatch
 {
     [HarmonyPatch(nameof(GameNetworkManager.Start))]
     [HarmonyPostfix]
-    static void StartPatch()
+    private static void StartPatch()
     {
         AddNetworkPrefabs();
     }
@@ -21,10 +21,14 @@ internal class GameNetworkManagerPatch
 
     private static void AddNetworkPrefab(GameObject prefab)
     {
-        if (prefab == null) return;
+        if (prefab == null)
+        {
+            Plugin.Logger.LogError("Failed to register network prefab. GameObject is null.");
+            return;
+        }
 
         NetworkManager.Singleton.AddNetworkPrefab(prefab);
 
-        Plugin.logger.LogInfo($"Registered \"{prefab.name}\" network prefab.");
+        Plugin.Logger.LogInfo($"Registered \"{prefab.name}\" network prefab.");
     }
 }

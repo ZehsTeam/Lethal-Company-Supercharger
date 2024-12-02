@@ -3,7 +3,6 @@ using BepInEx.Logging;
 using com.github.zehsteam.Supercharger.Patches;
 using HarmonyLib;
 using System.Reflection;
-using Unity.Netcode;
 using UnityEngine;
 
 namespace com.github.zehsteam.Supercharger;
@@ -11,28 +10,28 @@ namespace com.github.zehsteam.Supercharger;
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 internal class Plugin : BaseUnityPlugin
 {
-    private readonly Harmony harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
+    private readonly Harmony _harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
 
     internal static Plugin Instance;
-    internal static ManualLogSource logger;
+    internal static new ManualLogSource Logger;
 
-    internal static SyncedConfigManager ConfigManager;
+    internal static ConfigManager ConfigManager;
 
-    public static bool IsHostOrServer => NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer;
-    
+    #pragma warning disable IDE0051 // Remove unused private members
     private void Awake()
+    #pragma warning restore IDE0051 // Remove unused private members
     {
         if (Instance == null) Instance = this;
 
-        logger = BepInEx.Logging.Logger.CreateLogSource(MyPluginInfo.PLUGIN_GUID);
-        logger.LogInfo($"{MyPluginInfo.PLUGIN_NAME} has awoken!");
+        Logger = BepInEx.Logging.Logger.CreateLogSource(MyPluginInfo.PLUGIN_GUID);
+        Logger.LogInfo($"{MyPluginInfo.PLUGIN_NAME} has awoken!");
 
-        harmony.PatchAll(typeof(GameNetworkManagerPatch));
-        harmony.PatchAll(typeof(StartOfRoundPatch));
-        harmony.PatchAll(typeof(InteractTriggerPatch));
-        harmony.PatchAll(typeof(ItemChargerPatch));
+        _harmony.PatchAll(typeof(GameNetworkManagerPatch));
+        _harmony.PatchAll(typeof(StartOfRoundPatch));
+        _harmony.PatchAll(typeof(InteractTriggerPatch));
+        _harmony.PatchAll(typeof(ItemChargerPatch));
 
-        ConfigManager = new SyncedConfigManager();
+        ConfigManager = new ConfigManager();
 
         Content.Load();
 
@@ -41,34 +40,67 @@ internal class Plugin : BaseUnityPlugin
 
     private void NetcodePatcherAwake()
     {
-        var types = Assembly.GetExecutingAssembly().GetTypes();
-
-        foreach (var type in types)
+        try
         {
-            var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            foreach (var method in methods)
-            {
-                var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+            var currentAssembly = Assembly.GetExecutingAssembly();
+            var types = currentAssembly.GetTypes();
 
-                if (attributes.Length > 0)
+            foreach (var type in types)
+            {
+                var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+
+                foreach (var method in methods)
                 {
-                    method.Invoke(null, null);
+                    try
+                    {
+                        // Safely attempt to retrieve custom attributes
+                        var attributes = method.GetCustomAttributes(typeof(RuntimeInitializeOnLoadMethodAttribute), false);
+
+                        if (attributes.Length > 0)
+                        {
+                            try
+                            {
+                                // Safely attempt to invoke the method
+                                method.Invoke(null, null);
+                            }
+                            catch (TargetInvocationException ex)
+                            {
+                                // Log and continue if method invocation fails (e.g., due to missing dependencies)
+                                Logger.LogWarning($"Failed to invoke method {method.Name}: {ex.Message}");
+                            }
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        // Handle errors when fetching custom attributes, due to missing types or dependencies
+                        Logger.LogWarning($"Error processing method {method.Name} in type {type.Name}: {ex.Message}");
+                    }
                 }
             }
         }
-    }
-
-    public void OnLocalDisconnect()
-    {
-        logger.LogInfo($"Local player disconnected. Removing host config data.");
-        ConfigManager.SetHostConfigData(null);
+        catch (System.Exception ex)
+        {
+            // Catch any general exceptions that occur in the process
+            Logger.LogError($"An error occurred in NetcodePatcherAwake: {ex.Message}");
+        }
     }
 
     public void LogInfoExtended(object data)
     {
-        if (ConfigManager.ExtendedLogging)
+        LogExtended(LogLevel.Info, data);
+    }
+
+    public void LogExtended(LogLevel level, object data)
+    {
+        if (ConfigManager == null || ConfigManager.ExtendedLogging == null)
         {
-            logger.LogInfo(data);
+            Logger.Log(level, data);
+            return;
+        }
+
+        if (ConfigManager.ExtendedLogging.Value)
+        {
+            Logger.Log(level, data);
         }
     }
 }

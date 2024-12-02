@@ -4,9 +4,14 @@ namespace com.github.zehsteam.Supercharger;
 
 internal class PlayerUtils
 {
-    public static bool IsLocalPlayer(int playerId)
+    public static PlayerControllerB GetLocalPlayerScript()
     {
-        return IsLocalPlayer(GetPlayerScript(playerId));
+        if (GameNetworkManager.Instance == null)
+        {
+            return null;
+        }
+
+        return GameNetworkManager.Instance.localPlayerController;
     }
 
     public static bool IsLocalPlayer(PlayerControllerB playerScript)
@@ -14,30 +19,16 @@ internal class PlayerUtils
         return playerScript == GetLocalPlayerScript();
     }
 
-    public static int GetPlayerId(PlayerControllerB playerScript)
+    public static PlayerControllerB GetPlayerScriptByClientId(ulong clientId)
     {
-        return (int)playerScript.playerClientId;
-    }
-
-    public static int GetLocalPlayerId()
-    {
-        return (int)GetLocalPlayerScript().playerClientId;
-    }
-
-    public static PlayerControllerB GetPlayerScript(int playerId)
-    {
-        try
+        foreach (var playerScript in StartOfRound.Instance.allPlayerScripts)
         {
-            return StartOfRound.Instance.allPlayerScripts[playerId];
+            if (playerScript.actualClientId == clientId)
+            {
+                return playerScript;
+            }
         }
-        catch
-        {
-            return null;
-        }
-    }
 
-    public static PlayerControllerB GetLocalPlayerScript()
-    {
-        return GameNetworkManager.Instance.localPlayerController;
+        return null;
     }
 }
